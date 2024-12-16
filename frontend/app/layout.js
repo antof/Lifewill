@@ -13,8 +13,8 @@ const fontSans = FontSans({
 })
 
 export const metadata = {
-  title: "Bank DApp",
-  description: "Description...",
+  title: "Lifewill",
+  description: "",
 };
 
 export default function RootLayout({ children }) {

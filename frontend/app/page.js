@@ -1,6 +1,6 @@
 'use client';
 
-import Bank from "@/components/Bank";
+import Lifewill from "@/components/Lifewill";
 import NotConnected from "@/components/NotConnected";
 
 import { useAccount } from "wagmi";
@@ -12,7 +12,7 @@ export default function Home() {
   return (
     <>
       {isConnected ? (
-        <Bank />
+        <Lifewill />
       ) : (
         <NotConnected />
       )}
