@@ -1,12 +1,40 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.27;
 
-contract LifeWillAccount {
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-    address owner;
+contract LifeWillAccount is ERC721, Ownable{
 
-    constructor(address _owner)
+
+    constructor(string memory _key) ERC721("LifewillAccount","LWNFT") Ownable(msg.sender)
     {
-        owner = _owner;
+        key = _key;
     }
+
+    bool isUnlocked;
+    string key;
+
+    mapping(uint256 => string) documentsURI;
+
+    function addDocument(address to, uint256 tokenId) external onlyOwner {
+        _mint(to, tokenId);
+    }
+  
+    function _update(address to, uint256 tokenId, address auth) internal  virtual override(ERC721)
+    returns (address)
+    {
+    address from = _ownerOf(tokenId);
+    if (from != address(0) && to != address(0)) {
+        revert("Soulbound: Transfer failed");
+    }
+    return super._update(to, tokenId, auth);
+    }
+
+    function removeDocument(uint256 tokenId) external onlyOwner
+    {
+        _burn(tokenId);
+        delete(documentsURI[tokenId]);
+    }
+
 }
