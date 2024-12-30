@@ -18,14 +18,20 @@ contract LifeWillAccount is ERC721, Ownable{
                     )));
     }
 
+    event DocumentSent(uint256 docId, string text);
+    event DocumentRemoved(uint256 docId);
+
+
     bool isUnlocked;
     uint256 key;
     uint256 tokenIdCounter = 0;
 
     mapping(uint256 => string) documentsURI;
 
-    function addDocument(address to) external onlyOwner {
+    function addDocument(address to, string memory _text) external onlyOwner {
         _safeMint(to, tokenIdCounter);
+        documentsURI[tokenIdCounter] = _text;
+        emit DocumentSent(tokenIdCounter, _text);
         tokenIdCounter+=1;
     }
   
@@ -42,7 +48,18 @@ contract LifeWillAccount is ERC721, Ownable{
     function removeDocument(uint256 tokenId) external onlyOwner
     {
         _burn(tokenId);
+        emit DocumentRemoved(tokenIdCounter);
         delete(documentsURI[tokenId]);
+    }
+
+    function getTokenIdCounter() public view returns(uint256)
+    {
+        return tokenIdCounter;
+    }
+
+    function getDocument(uint256 documentId) public view returns(string memory)
+    {
+        return documentsURI[documentId];
     }
 
 }
