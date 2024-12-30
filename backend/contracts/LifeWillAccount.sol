@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 contract LifeWillAccount is ERC721, Ownable{
 
 
-    constructor() ERC721("LifewillAccount","LWNFT") Ownable(msg.sender)
+    constructor(address owner) ERC721("LifewillAccount","LWNFT") Ownable(owner)
     {
         key =   uint256(
                 keccak256(
@@ -20,12 +20,12 @@ contract LifeWillAccount is ERC721, Ownable{
 
     bool isUnlocked;
     uint256 key;
-    uint256 tokenIdCounter;
+    uint256 tokenIdCounter = 0;
 
     mapping(uint256 => string) documentsURI;
 
     function addDocument(address to) external onlyOwner {
-        _mint(to, tokenIdCounter);
+        _safeMint(to, tokenIdCounter);
         tokenIdCounter+=1;
     }
   

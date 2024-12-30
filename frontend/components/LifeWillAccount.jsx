@@ -15,6 +15,7 @@ import { useWriteContract, useAccount, useReadContract} from 'wagmi'
 
 const LifeWillAccount = () => {
     const [texteATransmettre, setProposalName] = useState('');
+    const [receiverAddress, setReceiverAddress] = useState('');
     const { address  } = useAccount();
     
 
@@ -27,14 +28,16 @@ const LifeWillAccount = () => {
       })
 
     const addDocument = async () => {
-        console.log("addDocument is called");
         if ((texteATransmettre).length !== 0) 
             {
+                console.log("addDocument is called with text leng" + texteATransmettre.length  + "\n" + "addressContract " + String(userContractAddress.data) + 
+                "\n receiveradress " + receiverAddress + "\n " + String(userAccountAbi));
                 writeContract({
-                    address: userContractAddress,
+                    address: String(userContractAddress.data),
                     abi: userAccountAbi,
-                    functionName: 'addProposal',
-                    args: [proposalName]
+                    functionName: 'addDocument',
+                    args: [address],
+                    account:address
                 })
             }
     }
@@ -49,6 +52,7 @@ const LifeWillAccount = () => {
         </CardHeader>
         <CardContent>
             <Input placeholder="Texte à transmettre" onChange={(e) => setProposalName(e.target.value)} value={texteATransmettre} />
+            <Input placeholder="Adresse du destinataire" onChange={(e) => setReceiverAddress(e.target.value)} value={receiverAddress} />
             <Button onClick={addDocument}>Transmettre </Button>
         </CardContent>
         <CardFooter>

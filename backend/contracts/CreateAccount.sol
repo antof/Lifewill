@@ -22,7 +22,7 @@ contract CreateAccount {
     function register() public
     {
         require(accounts[msg.sender] == address(0),"You can create only one LifeWill Account");
-        LifeWillAccount account = new LifeWillAccount();
+        LifeWillAccount account = new LifeWillAccount(msg.sender);
         accounts[msg.sender] = address(account);
         emit AccountCreated(msg.sender, address(account));
     }
