@@ -28,11 +28,41 @@ contract LifeWillAccount is ERC721, Ownable{
 
     mapping(uint256 => string) documentsURI;
 
+    mapping(uint256 => bool) public isDocumentActive; // Pour suivre les documents actifs
+
     function addDocument(address to, string memory _text) external onlyOwner {
         _safeMint(to, tokenIdCounter);
         documentsURI[tokenIdCounter] = _text;
+        isDocumentActive[tokenIdCounter] = true; // Marquer le document comme actif
         emit DocumentSent(tokenIdCounter, _text);
-        tokenIdCounter+=1;
+        tokenIdCounter += 1;
+    }
+
+    function removeDocument(uint256 tokenId) external onlyOwner {
+        require(isDocumentActive[tokenId], "Document already removed");
+        _burn(tokenId);
+        isDocumentActive[tokenId] = false; // Marquer le document comme inactif
+        emit DocumentRemoved(tokenId);
+        delete documentsURI[tokenId];
+    }
+
+    function getActiveDocuments() external view returns (uint256[] memory) {
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < tokenIdCounter; i++) {
+            if (isDocumentActive[i]) {
+                activeCount++;
+            }
+        }
+
+        uint256[] memory activeIds = new uint256[](activeCount);
+        uint256 index = 0;
+        for (uint256 i = 0; i < tokenIdCounter; i++) {
+            if (isDocumentActive[i]) {
+                activeIds[index] = i;
+                index++;
+            }
+        }
+        return activeIds;
     }
   
     function _update(address to, uint256 tokenId, address auth) internal  virtual override(ERC721)
@@ -43,13 +73,6 @@ contract LifeWillAccount is ERC721, Ownable{
         revert("Soulbound: Transfer failed");
     }
     return super._update(to, tokenId, auth);
-    }
-
-    function removeDocument(uint256 tokenId) external onlyOwner
-    {
-        _burn(tokenId);
-        emit DocumentRemoved(tokenIdCounter);
-        delete(documentsURI[tokenId]);
     }
 
     function getTokenIdCounter() public view returns(uint256)

@@ -10,25 +10,26 @@ import {
 import { Button } from "./ui/button";
 
 
-const ReceivedDocuments = ({documents}) => {
+const SentDocuments = ({events, onRemoveDocument}) => {
 
-    if(documents == undefined)
+    if(events == undefined)
         return
     (<div></div>)
-    if(documents!==null && documents!== undefined)
+    if(events!==null && events!== undefined)
     {
     return (
         <>
         <Card>
         <CardHeader>
-            <CardTitle>Documents reçus</CardTitle>
+            <CardTitle>Documents tranmis</CardTitle>
             <ul>
-        {documents.map((document) => (
-          <li key={document.text}>
+        {events.map((event) => (
+          <li key={event.id}>
             <p>
-              <strong>ID:</strong> {String(document.id)} <br />
-              <strong>Texte:</strong> {document.text}
+              <strong>ID:</strong> {String(event.id)} <br />
+              <strong>Texte:</strong> {event.text}
             </p>
+            <Button onClick={() => onRemoveDocument(event.id)}>Supprimer</Button>
           </li>
         ))}
       </ul>
@@ -42,4 +43,4 @@ const ReceivedDocuments = ({documents}) => {
 }
   }
   
-  export default ReceivedDocuments
+  export default SentDocuments
