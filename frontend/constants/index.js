@@ -1,6 +1,11 @@
 export const contractAddress="0x5FbDB2315678afecb367f032d93F642f64180aa3"
 export const contractAbi=[
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -21,12 +26,38 @@ export const contractAbi=[
   },
   {
     "inputs": [],
+    "name": "getUnlockedManager",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getUserAccount",
     "outputs": [
       {
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isManager",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -65,7 +96,12 @@ export const userAccountAbi =[
     "inputs": [
       {
         "internalType": "address",
-        "name": "owner",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_isUnlockedManager",
         "type": "address"
       }
     ],
@@ -431,6 +467,19 @@ export const userAccountAbi =[
   },
   {
     "inputs": [],
+    "name": "getIsUnlocked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getTokenIdCounter",
     "outputs": [
       {
@@ -615,6 +664,19 @@ export const userAccountAbi =[
       }
     ],
     "name": "setApprovalForAll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_isUnlocked",
+        "type": "bool"
+      }
+    ],
+    "name": "setUnlocked",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

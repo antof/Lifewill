@@ -21,11 +21,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body
-        className={cn(
-          "min-h-screen bg-background dark font-sans antialiased",
-          fontSans.variable
-        )}
+      <body className="h-screen bg-hero bg-cover bg-center"
       >
         <MyRainbowKitProvider>
           <Layout>

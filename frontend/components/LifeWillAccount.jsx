@@ -62,37 +62,52 @@ const LifeWillAccount = () => {
     });
   };
 
+  const getIsUnlocked = async (contractAddress) => {
+    try {
+      const isUnlocked = await publicClient.readContract({
+        address: contractAddress,
+        abi: userAccountAbi,
+        functionName: "getIsUnlocked",
+      });
+      return isUnlocked;
+    } catch (error) {
+      console.error(`Erreur lors de la vérification de isUnlocked pour ${contractAddress}:`, error);
+      return false;
+    }
+  };
+
   const getDocumentsFromContract = async (contractAddress) => {
     try {
+      const isUnlocked = await getIsUnlocked(contractAddress);
       const sendEvents = await publicClient.getLogs({
         address: contractAddress,
         event: parseAbiItem("event DocumentSent(uint256 docId, string text)"),
         fromBlock: 0n,
         toBlock: "latest",
       });
-
+  
       const userDocuments = [];
-
+  
       for (const event of sendEvents) {
         const { docId, text } = event.args;
-
+  
         try {
           const owner = await publicClient.readContract({
             address: contractAddress,
             abi: userAccountAbi,
             functionName: "ownerOf",
             args: [docId],
-            account: address
+            account: address,
           });
-          console.log("testing these adresse " , owner.toLowerCase(), address.toLocaleLowerCase(), "on contract" , contractAddress);
+  
           if (owner.toLowerCase() === address.toLowerCase()) {
-            userDocuments.push({ id: docId, text });
+            userDocuments.push({ id: docId, text, isUnlocked, contractAddress });
           }
         } catch (error) {
           console.log(`Document ${docId} a été supprimé ou est inaccessible.`);
         }
       }
-
+  
       return userDocuments;
     } catch (error) {
       console.error(`Erreur pour le contrat ${contractAddress}:`, error);
@@ -115,7 +130,7 @@ const LifeWillAccount = () => {
     let userDocuments = [];
   
     for (const account of allAccounts) {
-      const documents = await getDocumentsFromContract(account); // Fonction existante dans votre code
+      const documents = await getDocumentsFromContract(account); 
       userDocuments = [...userDocuments, ...documents];
     }
   
@@ -124,7 +139,6 @@ const LifeWillAccount = () => {
   
 
   useEffect(() => {
-    console.log("user adress is " + address)
     fetchUserDocuments();
   }, [address]);
 
@@ -139,6 +153,7 @@ const LifeWillAccount = () => {
                 abi: userAccountAbi,
                 functionName: "getDocument",
                 args: [id],
+                account : address,
               });
               return { id, text };
             })
@@ -150,7 +165,7 @@ const LifeWillAccount = () => {
       };
       fetchActiveDocuments();
     }
-  }, [activeIds, userContractAddress]); // Déclencher lorsqu'il y a des nouvelles données
+  }, [activeIds, userContractAddress]);
 
   return (
     <div>
@@ -168,17 +183,17 @@ const LifeWillAccount = () => {
             onChange={(e) => setProposalName(e.target.value)}
             value={texteATransmettre}
           />
-          <Input
+          <Input style={{ marginTop: '20px' }}
             placeholder="Adresse du destinataire"
             onChange={(e) => setReceiverAddress(e.target.value)}
             value={receiverAddress}
           />
-          <Button onClick={addDocument}>Transmettre</Button>
+          <Button onClick={addDocument} style={{ marginTop: '20px' }}>Transmettre</Button>
         </CardContent>
       </Card>
 
       <SentDocuments events={events} onRemoveDocument={removeDocument} />
-      <ReceivedDocuments documents={userDocuments}/>
+      <ReceivedDocuments documents={userDocuments} address = {address}/>
     </div>
   );
 };
