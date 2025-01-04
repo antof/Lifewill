@@ -95,12 +95,48 @@ describe("Init", function () {
       expect(await userAccount.removeDocument(0)).to.not.be.reverted;
     })
 
+    it("document not active", async function () {
+      await createAccountContract.register();
+      const contractadd = await createAccountContract.getUserAccount();
+      const userAccount = await LifeWillAccount.attach(contractadd);
+      await userAccount.addDocument(user1, "Secret message");
+      await userAccount.removeDocument(0);
+      await expect(userAccount.getDocument(0)).to.not.be.revertedWithoutReason("Document is not active");
+    })
+
+    
+    it("can't remove already removed document", async function () {
+      await createAccountContract.register();
+      const contractadd = await createAccountContract.getUserAccount();
+      const userAccount = await LifeWillAccount.attach(contractadd);
+      await userAccount.addDocument(user1, "Secret message");
+      await userAccount.removeDocument(0);
+      await expect(userAccount.removeDocument(0)).to.be.revertedWith("Document already removed");
+    })
+
     it("can get active documents", async function () {
       await createAccountContract.register();
       const contractadd = await createAccountContract.getUserAccount();
       const userAccount = await LifeWillAccount.attach(contractadd);
       await userAccount.addDocument(user1, "Secret message");
       await expect(userAccount.getActiveDocuments()[0]).to.equal();
+    })
+
+    it("can get document if i'm the nft owner and the contract is unlcoked", async function () {
+      await createAccountContract.register();
+      const contractadd = await createAccountContract.getUserAccount();
+      const userAccount = await LifeWillAccount.attach(contractadd);
+      await userAccount.addDocument(user1,"secret message !");
+      await userAccount.connect(unlocker).setUnlocked(true);
+      expect(await userAccount.connect(user1).getDocument(0)).to.not.be.reverted;
+    })
+
+    it("can get document if i'm the contract owner", async function () {
+      await createAccountContract.register();
+      const contractadd = await createAccountContract.getUserAccount();
+      const userAccount = await LifeWillAccount.attach(contractadd);
+      await userAccount.addDocument(user1,"secret message !");
+      expect(await userAccount.getDocument(0)).to.not.be.reverted;
     })
 
     it("owner can't transfer token", async function () {
