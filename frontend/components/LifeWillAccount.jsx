@@ -17,9 +17,9 @@ import SentDocuments from "@/components/SentDocuments";
 import ReceivedDocuments from "@/components/ReceivedDocuments";
 import { readContract } from '@wagmi/core';
 
-const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106");
+const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_ALCHEMY_URL);
 
-const LifeWillAccount = () => {
+const LifeWillAccount = ({accounts}) => {
   const [texteATransmettre, setProposalName] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
   const [events, setEvents] = useState([]);
@@ -66,25 +66,12 @@ const LifeWillAccount = () => {
       account: address,
     });
   };
-
-  const getIsUnlocked = async (contractAddress) => {
-    try {
-      const contract = new ethers.Contract(contractAddress, userAccountAbi, provider);
-      const isUnlocked = await contract.getIsUnlocked();
-      return isUnlocked;
-    } catch (error) {
-      console.error(`Erreur lors de la vérification de isUnlocked pour ${contractAddress}:`, error);
-      return false;
-    }
-  };
-
   const getDocumentsFromContract = async (contractAddress) => {
     try {
-      const isUnlocked = await getIsUnlocked(contractAddress);
-
+      let foundDocuments = [];
       const iface = new ethers.Interface(userAccountAbi);
       const logs = await provider.getLogs({
-        address: contractAddress,
+        address: contractAddress.address,
         fromBlock: 7412581n,
         toBlock: "latest",
         topics: [ethers.id("DocumentSent(uint256,string)")],
@@ -96,7 +83,7 @@ const LifeWillAccount = () => {
   
         try {
           const owner = await readContract(config,{
-            address: contractAddress,
+            address: contractAddress.address,
             abi: userAccountAbi,
             functionName: "ownerOf",
             args: [docId],
@@ -104,46 +91,35 @@ const LifeWillAccount = () => {
           });
   
           if (owner.toLowerCase() === address.toLowerCase()) {
-            console.log('adding ',  docId, 'of contract ' , contractAddress, 'because ', owner, ' is ' , address)
-            userDocuments.push({ id: docId, isUnlocked, contractAddress });
+            console.log('adding ',  docId, 'of contract ' , contractAddress.address, 'because ', owner, ' is ' , address);
+            foundDocuments.push({
+              id: docId, 
+              isUnlocked: contractAddress.isUnlocked, 
+              address: contractAddress.address 
+            });
           }
         } catch (error) {
-          console.log(`Document ${docId} a été supprimé ou est inaccessible.`);
+          console.log(`Document ${docId} a été supprimé ou est inaccessible.`, error);
         }
       }
-
-      return userDocuments;
+      return foundDocuments;
     } catch (error) {
       console.error(`Erreur pour le contrat ${contractAddress}:`, error);
       return [];
     }
   };
 
-  const fetchAllAccounts = async () => {
-    const iface = new ethers.Interface(contractAbi);
-    const logs = await provider.getLogs({
-      address: contractAddress,
-      fromBlock: 7412581n,
-      toBlock: "latest",
-      topics: [ethers.id("AccountCreated(address,address)")],
-    });
-
-    return logs.map((log) => {
-      const decodedLog = iface.parseLog(log);
-      return decodedLog.args.contractAddress;
-    });
-  };
-
   const fetchUserReceivedDocuments = async () => {
     if(isFetching)
       return;
     isFetching = true;
-    const allAccounts = await fetchAllAccounts();
+    setDocuments([]);
     let userDocuments = [];
-
-    for (const account of allAccounts) {
+    console.log("called for accounts ", accounts);
+    for (const account of accounts) {
       const documents = await getDocumentsFromContract(account);
-      userDocuments = [...userDocuments, ...documents];
+      if(documents)
+        userDocuments = [...userDocuments, ...documents];
     }
 
     setDocuments(userDocuments);
@@ -151,6 +127,7 @@ const LifeWillAccount = () => {
   };
 
   useEffect(() => {
+    setDocuments([]);
     fetchUserReceivedDocuments();
   }, [address]);
 

@@ -11,7 +11,6 @@ import { useConfig } from "wagmi";
 import { readContract } from '@wagmi/core';
 import { Button } from "./ui/button";
 import { useState } from "react";
-import { publicClient } from "@/utils/client";
 import { userAccountAbi } from "@/constants";
 
 const ReceivedDocuments = ({ documents, address }) => {
@@ -20,7 +19,6 @@ const ReceivedDocuments = ({ documents, address }) => {
   const config = useConfig()
 
   const readDocument = async (contractAddress, docId) => {
-    console.log("calling with param ", contractAddress , docId);
     try {
       const text = await readContract(config,{
         address: contractAddress,
@@ -56,11 +54,11 @@ const ReceivedDocuments = ({ documents, address }) => {
               borderRadius: '8px',
               boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.1)',
               wordBreak: 'break-word',
-          }} key={doc.id}>
+          }} key={crypto.randomUUID()}>
               <p>****</p>
               {doc.isUnlocked && (
                 <Button
-                  onClick={() => readDocument(doc.contractAddress, doc.id)}
+                  onClick={() => readDocument(doc.address, doc.id)}
                 >
                   Lire
                 </Button>

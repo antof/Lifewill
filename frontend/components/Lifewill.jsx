@@ -11,101 +11,97 @@ import {
 
 import { ethers } from 'ethers';
 
-const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106");
 import { contractAddress, contractAbi , userAccountAbi} from "@/constants";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount , useReadContract} from "wagmi";
 import { useState, useEffect} from "react";
 import CreateAccount from "./CreateAccount";
 import LifeWillAccount from "./LifeWillAccount";
 import { Button } from "./ui/button";
-import { publicClient } from "@/utils/client";
-import { parseAbiItem } from "viem";
 import NotConnected from "./NotConnected";
 
-const Lifewill = () => {
-  const { address , isConnected} = useAccount();
-  const { data: hash, isPending, error, writeContract } = useWriteContract();
-  const [isManager, setIsManager] = useState(false);
-  const [accounts, setAccounts] = useState([]);
+const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_INFURA_URL);
 
-  const isRegistred = useReadContract({
-    abi: contractAbi,
-    address: contractAddress,
-    functionName: "isRegistred",
-    args: [address],
-    watch: true,
-    account : address,
-  });
+let isFetchingAccount = false;
+
+const Lifewill = () => {
+  const { address, isConnected } = useAccount();
+  const { data: hash, writeContract } = useWriteContract();
+  const [accounts, setAccounts] = useState([]);
+  const [isRegistred, setIsRegistred] = useState(false);
 
   const createAccount = async () => {
-      const tx = await writeContract({
+    try {
+      await writeContract({
         address: contractAddress,
         abi: contractAbi,
         functionName: "register",
         account: address,
       });
-    };
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    })
-  
-
-  const checkIfManager = useReadContract({
-        address: contractAddress,
-        abi: contractAbi,
-        functionName: "isManager",
-        account : address,
-  });
-
-  const fetchAccounts = async () => {
-    try {
-      const logs = await provider.getLogs({
-        address: contractAddress,
-        fromBlock: 7412581n, // Bloc de départ
-        toBlock: "latest",   // Bloc jusqu'à "latest"
-        topics: [
-          ethers.id("AccountCreated(address,address)") // Hash du topic de l'événement
-        ],
-      });
-  
-      console.log("Logs bruts:", logs);
-  
-      const iface = new ethers.Interface(contractAbi);
-      const decodedLogs = logs.map((log) => {
-        const decoded = iface.parseLog(log);
-        return {
-          creator: decoded.args[0],
-          contractAddress: decoded.args[1],
-        };
-      });
-  
-      console.log("Logs décodés:", decodedLogs);
-  
-      const fetchedAccounts = await Promise.all(
-        decodedLogs.map(async (log) => {
-          // Instanciez un objet Contract pour chaque compte
-          const userAccountContract = new ethers.Contract(
-            log.contractAddress, // Adresse du contrat
-            userAccountAbi,      // ABI du contrat
-            provider             // Fournisseur pour lire les données
-          );
-  
-          // Appelez la méthode getIsUnlocked
-          const isUnlocked = await userAccountContract.getIsUnlocked();
-  
-          return { address: log.contractAddress, isUnlocked };
-        })
-      );
-  
-      setAccounts(fetchedAccounts);
     } catch (error) {
-      console.error("Error fetching accounts:", error);
+      console.error("Erreur lors de la création du compte :", error);
     }
   };
   
+  const checkIfManager = useReadContract({
+    address: contractAddress,
+    abi: contractAbi,
+    functionName: "isManager",
+    account: address,
+  });
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const fetchAccounts = async () => {
+  if(isFetchingAccount)
+    return;
+  isFetchingAccount = true;
+  try {
+    const logs = await provider.getLogs({
+      address: contractAddress,
+      fromBlock: 7412581n, // Bloc de départ
+      toBlock: "latest",   // Bloc jusqu'à "latest"
+      topics: [
+        ethers.id("AccountCreated(address,address)") // Hash du topic de l'événement
+      ],
+    });
+
+    const iface = new ethers.Interface(contractAbi);
+    const decodedLogs = logs.map((log) => {
+      const decoded = iface.parseLog(log);
+      return {
+        creator: decoded.args[0],
+        contractAddress: decoded.args[1],
+      };
+    });
+
+  const fetchedAccounts = [];
+    
+    // Using for...of to allow async/await with delay
+    for (const log of decodedLogs) {
+      // Instanciez un objet Contract pour chaque compte
+      const userAccountContract = new ethers.Contract(
+        log.contractAddress, // Adresse du contrat
+        userAccountAbi,      // ABI du contrat
+        provider             // Fournisseur pour lire les données
+      );
+      // Ajoutez un délai entre chaque requête
+      await delay(300);  // Délai de 500ms entre chaque appel
+
+      // Appelez la méthode getIsUnlocked
+      const isUnlocked = await userAccountContract.getIsUnlocked();
+
+      // Ajouter les informations dans le tableau
+      fetchedAccounts.push({ address: log.contractAddress, isUnlocked, creator: log.creator });
+    }
+
+    setAccounts(fetchedAccounts.reverse());
+    isFetchingAccount = false;
+  } catch (error) {
+    console.error("Error fetching accounts:", error);
+    isFetchingAccount = false;
+  }
+  isFetchingAccount = false;
+};
 
   const unlockAccount = async (accountAddress) => {
     try {
@@ -123,10 +119,41 @@ const Lifewill = () => {
   };
 
   useEffect(() => {
-      if (checkIfManager.data) {
+    if(!contractAddress)
+      return;
+
+   // Créer une instance du contrat
+  const contract = new ethers.Contract(contractAddress, contractAbi, provider);
+  // Écouter l'événement "AccountCreated"
+  const listener = (creator, accountAddress, event) => {
+    console.log("CALLED !");
+    fetchAccounts(); // Refresh accounts after
+  };
+
+  // Ajouter le listener pour l'événement "AccountCreated"
+  contract.on("AccountCreated", listener);
+
+  // Nettoyer l'écouteur lorsque le composant est démonté ou que l'adresse change
+  return () => {
+    contract.off("AccountCreated", listener);
+  };
+  },[contractAddress])
+  
+  useEffect(() => {
+
+      if (checkIfManager.data  == true || address!=undefined) {
         fetchAccounts();
       }
+
   }, [checkIfManager.data, address]);
+
+  useEffect(() => {
+    if(address!=undefined)
+    {
+      const creatorMatch = accounts.some((account) => account.creator === address);
+      setIsRegistred(creatorMatch);
+    }
+}, [accounts,address]);
 
   if (checkIfManager.data == true) {
     return (
@@ -150,7 +177,9 @@ const Lifewill = () => {
               >
                 <p>
                   <strong>Account Address:</strong> {account.address} <br />
+                  <strong>Creator Address:</strong> {account.creator}<br />
                   <strong>Is Unlocked:</strong> {account.isUnlocked ? "Yes" : "No"}
+                  
                 </p>
                 {!account.isUnlocked && (
                   <Button onClick={() => unlockAccount(account.address)}>
@@ -168,10 +197,10 @@ const Lifewill = () => {
 
   return (
     <>
-      {(isRegistred.data == undefined || isRegistred.data === false || isConnected == false) ? (
+      {((isRegistred == undefined || isRegistred === false || isConnected == false)) ? (
         <NotConnected createAccount={createAccount} isConnected ={isConnected}/>
       ) : (
-        <LifeWillAccount />
+        <LifeWillAccount accounts = {accounts}/>
       )}
     </>
   );
