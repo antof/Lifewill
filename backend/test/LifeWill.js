@@ -39,6 +39,17 @@ describe("Init", function () {
       expect(await createAccountContract.isRegistred(deployer)).to.equal(true);
     });
 
+    it("should emit AccountCreated when a user registers", async function () { 
+      await expect(createAccountContract.register())
+      .to.emit(createAccountContract, "AccountCreated")
+      .withArgs(deployer.address, '0xd8058efe0198ae9dD7D563e1b4938Dcbc86A1F81');
+    });
+
+    it("Register and test if you can't register again", async function () {
+      await createAccountContract.register();
+      await expect(createAccountContract.register()).to.be.revertedWith("You can create only one LifeWill Account");
+    });
+
     it("isRegistred return false if not registred", async function () {
       expect(await createAccountContract.isRegistred(deployer)).to.equal(false);
     });
