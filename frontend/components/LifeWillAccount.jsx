@@ -6,22 +6,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { useConfig } from "wagmi";
 import { useEffect, useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { contractAddress, contractAbi, userAccountAbi } from "@/constants";
 import { useWriteContract, useAccount, useReadContract } from "wagmi";
-import { publicClient } from "@/utils/client";
-import { parseAbiItem } from "viem";
+import { ethers } from "ethers";
 import SentDocuments from "@/components/SentDocuments";
 import ReceivedDocuments from "@/components/ReceivedDocuments";
+import { readContract } from '@wagmi/core';
+
+const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106");
 
 const LifeWillAccount = () => {
   const [texteATransmettre, setProposalName] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
   const [events, setEvents] = useState([]);
-  const [userDocuments, setDocuments ] = useState([]);
+  const [userDocuments, setDocuments] = useState([]);
   const { address } = useAccount();
+  const config = useConfig();
+  let isFetching = false;
 
   const { writeContract } = useWriteContract();
   const { data: userContractAddress } = useReadContract({
@@ -31,12 +36,12 @@ const LifeWillAccount = () => {
     account: address,
   });
 
-  const { data: activeIds} = useReadContract({
+  const { data: activeIds } = useReadContract({
     address: userContractAddress,
     abi: userAccountAbi,
     functionName: "getActiveDocuments",
     account: address,
-    watch : true
+    watch: true,
   });
 
   const addDocument = async () => {
@@ -64,11 +69,8 @@ const LifeWillAccount = () => {
 
   const getIsUnlocked = async (contractAddress) => {
     try {
-      const isUnlocked = await publicClient.readContract({
-        address: contractAddress,
-        abi: userAccountAbi,
-        functionName: "getIsUnlocked",
-      });
+      const contract = new ethers.Contract(contractAddress, userAccountAbi, provider);
+      const isUnlocked = await contract.getIsUnlocked();
       return isUnlocked;
     } catch (error) {
       console.error(`Erreur lors de la vérification de isUnlocked pour ${contractAddress}:`, error);
@@ -79,20 +81,21 @@ const LifeWillAccount = () => {
   const getDocumentsFromContract = async (contractAddress) => {
     try {
       const isUnlocked = await getIsUnlocked(contractAddress);
-      const sendEvents = await publicClient.getLogs({
+
+      const iface = new ethers.Interface(userAccountAbi);
+      const logs = await provider.getLogs({
         address: contractAddress,
-        event: parseAbiItem("event DocumentSent(uint256 docId, string text)"),
-        fromBlock: 0n,
+        fromBlock: 7412581n,
         toBlock: "latest",
+        topics: [ethers.id("DocumentSent(uint256,string)")],
       });
-  
-      const userDocuments = [];
-  
-      for (const event of sendEvents) {
-        const { docId, text } = event.args;
+
+      for (const logEvent of logs) {
+        const decodedLog = iface.parseLog(logEvent);
+        const docId = decodedLog.args[0];
   
         try {
-          const owner = await publicClient.readContract({
+          const owner = await readContract(config,{
             address: contractAddress,
             abi: userAccountAbi,
             functionName: "ownerOf",
@@ -101,45 +104,54 @@ const LifeWillAccount = () => {
           });
   
           if (owner.toLowerCase() === address.toLowerCase()) {
-            userDocuments.push({ id: docId, text, isUnlocked, contractAddress });
+            console.log('adding ',  docId, 'of contract ' , contractAddress, 'because ', owner, ' is ' , address)
+            userDocuments.push({ id: docId, isUnlocked, contractAddress });
           }
         } catch (error) {
           console.log(`Document ${docId} a été supprimé ou est inaccessible.`);
         }
       }
-  
+
       return userDocuments;
     } catch (error) {
       console.error(`Erreur pour le contrat ${contractAddress}:`, error);
       return [];
     }
   };
-  
+
   const fetchAllAccounts = async () => {
-    const logs = await publicClient.getLogs({
+    const iface = new ethers.Interface(contractAbi);
+    const logs = await provider.getLogs({
       address: contractAddress,
-      event: parseAbiItem("event AccountCreated(address creator, address contractAddress)"),
-      fromBlock: 0n,
+      fromBlock: 7412581n,
       toBlock: "latest",
+      topics: [ethers.id("AccountCreated(address,address)")],
     });
-    return logs.map((log) => log.args.contractAddress);
+
+    return logs.map((log) => {
+      const decodedLog = iface.parseLog(log);
+      return decodedLog.args.contractAddress;
+    });
   };
-  
-  const fetchUserDocuments = async () => {
+
+  const fetchUserReceivedDocuments = async () => {
+    if(isFetching)
+      return;
+    isFetching = true;
     const allAccounts = await fetchAllAccounts();
     let userDocuments = [];
-  
+
     for (const account of allAccounts) {
-      const documents = await getDocumentsFromContract(account); 
+      const documents = await getDocumentsFromContract(account);
       userDocuments = [...userDocuments, ...documents];
     }
-  
+
     setDocuments(userDocuments);
+    isFetching = false;
   };
-  
 
   useEffect(() => {
-    fetchUserDocuments();
+    fetchUserReceivedDocuments();
   }, [address]);
 
   useEffect(() => {
@@ -148,12 +160,12 @@ const LifeWillAccount = () => {
         try {
           const activeDocuments = await Promise.all(
             activeIds.map(async (id) => {
-              const text = await publicClient.readContract({
+            const text = await readContract(config,{
                 address: userContractAddress,
                 abi: userAccountAbi,
                 functionName: "getDocument",
                 args: [id],
-                account : address,
+                account: address,
               });
               return { id, text };
             })
@@ -183,17 +195,20 @@ const LifeWillAccount = () => {
             onChange={(e) => setProposalName(e.target.value)}
             value={texteATransmettre}
           />
-          <Input style={{ marginTop: '20px' }}
+          <Input
+            style={{ marginTop: "20px" }}
             placeholder="Adresse du destinataire"
             onChange={(e) => setReceiverAddress(e.target.value)}
             value={receiverAddress}
           />
-          <Button onClick={addDocument} style={{ marginTop: '20px' }}>Transmettre</Button>
+          <Button onClick={addDocument} style={{ marginTop: "20px" }}>
+            Transmettre
+          </Button>
         </CardContent>
       </Card>
 
       <SentDocuments events={events} onRemoveDocument={removeDocument} />
-      <ReceivedDocuments documents={userDocuments} address = {address}/>
+      <ReceivedDocuments documents={userDocuments} address={address} />
     </div>
   );
 };

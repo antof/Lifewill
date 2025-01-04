@@ -7,6 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { useConfig } from "wagmi";
+import { readContract } from '@wagmi/core';
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { publicClient } from "@/utils/client";
@@ -15,10 +17,12 @@ import { userAccountAbi } from "@/constants";
 const ReceivedDocuments = ({ documents, address }) => {
   const [decryptedText, setDecryptedText] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+  const config = useConfig()
 
   const readDocument = async (contractAddress, docId) => {
+    console.log("calling with param ", contractAddress , docId);
     try {
-      const text = await publicClient.readContract({
+      const text = await readContract(config,{
         address: contractAddress,
         abi: userAccountAbi,
         functionName: "getDocument",

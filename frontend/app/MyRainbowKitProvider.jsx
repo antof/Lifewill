@@ -7,22 +7,22 @@ import {
   darkTheme
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import {
-  hardhat,
-  sepolia
-} from 'wagmi/chains';
+import { sepolia } from 'wagmi/chains';  // Garder seulement sepolia ici
 import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
 
-import { http } from 'wagmi';
+// Remplacez par l'URL RPC de Sepolia (exemple avec Infura)
+const SEPOLIA_RPC_URL = 'https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106';
 
 const config = getDefaultConfig({
-    appName: 'My RainbowKit App',
-    projectId: '66836973d0e7ca63cb5f21c0f0fc984b',
-    chains: [hardhat,sepolia],
-    ssr: true, // If your dApp uses server side rendering (SSR)
+  appName: 'My RainbowKit App',
+  projectId: '66836973d0e7ca63cb5f21c0f0fc984b', 
+  chains: [
+    sepolia, 
+  ],
+  ssr: true, 
 });
 
 const queryClient = new QueryClient();
@@ -30,13 +30,13 @@ const queryClient = new QueryClient();
 const MyRainbowKitProvider = ({ children }) => {
   return (
     <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-            <RainbowKitProvider theme={darkTheme()}>
-                {children}
-            </RainbowKitProvider>
-        </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider theme={darkTheme()}>
+          {children}
+        </RainbowKitProvider>
+      </QueryClientProvider>
     </WagmiProvider>
-  )
-}
+  );
+};
 
-export default MyRainbowKitProvider
+export default MyRainbowKitProvider;

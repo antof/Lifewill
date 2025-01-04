@@ -9,6 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+import { ethers } from 'ethers';
+
+const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106");
 import { contractAddress, contractAbi , userAccountAbi} from "@/constants";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount , useReadContract} from "wagmi";
 import { useState, useEffect} from "react";
@@ -18,7 +21,6 @@ import { Button } from "./ui/button";
 import { publicClient } from "@/utils/client";
 import { parseAbiItem } from "viem";
 import NotConnected from "./NotConnected";
-
 
 const Lifewill = () => {
   const { address , isConnected} = useAccount();
@@ -50,50 +52,60 @@ const Lifewill = () => {
     })
   
 
-  const checkIfManager = async () => {
-    try {
-      console.log("checking if manager");
-      const result = await publicClient.readContract({
+  const checkIfManager = useReadContract({
         address: contractAddress,
         abi: contractAbi,
         functionName: "isManager",
         account : address,
-      });
-      setIsManager(result);
-    } catch (error) {
-      console.error("Error checking if address is manager:", error);
-    }
-  };
+  });
 
   const fetchAccounts = async () => {
     try {
-      const logs = await publicClient.getLogs({
-            address: contractAddress,
-            event: parseAbiItem("event AccountCreated(address creator, address contractAddress)"),
-            fromBlock: 0n,
-            toBlock: "latest",
-            account : address,
-          });
-
+      const logs = await provider.getLogs({
+        address: contractAddress,
+        fromBlock: 7412581n, // Bloc de départ
+        toBlock: "latest",   // Bloc jusqu'à "latest"
+        topics: [
+          ethers.id("AccountCreated(address,address)") // Hash du topic de l'événement
+        ],
+      });
+  
+      console.log("Logs bruts:", logs);
+  
+      const iface = new ethers.Interface(contractAbi);
+      const decodedLogs = logs.map((log) => {
+        const decoded = iface.parseLog(log);
+        return {
+          creator: decoded.args[0],
+          contractAddress: decoded.args[1],
+        };
+      });
+  
+      console.log("Logs décodés:", decodedLogs);
+  
       const fetchedAccounts = await Promise.all(
-        logs.map(async (log) => {
-          console.log("checking contract " + log.args.contractAddress);
-          const contractAddress = log.args.contractAddress;
-          const isUnlocked = await publicClient.readContract({
-            address: contractAddress,
-            abi: userAccountAbi,
-            functionName: "getIsUnlocked",
-            account : address,
-          });
-          return { address: contractAddress, isUnlocked };
+        decodedLogs.map(async (log) => {
+          // Instanciez un objet Contract pour chaque compte
+          const userAccountContract = new ethers.Contract(
+            log.contractAddress, // Adresse du contrat
+            userAccountAbi,      // ABI du contrat
+            provider             // Fournisseur pour lire les données
+          );
+  
+          // Appelez la méthode getIsUnlocked
+          const isUnlocked = await userAccountContract.getIsUnlocked();
+  
+          return { address: log.contractAddress, isUnlocked };
         })
       );
-
+  
       setAccounts(fetchedAccounts);
     } catch (error) {
       console.error("Error fetching accounts:", error);
     }
   };
+  
+
 
   const unlockAccount = async (accountAddress) => {
     try {
@@ -111,14 +123,12 @@ const Lifewill = () => {
   };
 
   useEffect(() => {
-    isRegistred.refetch();
-      checkIfManager();
-      if (isManager) {
+      if (checkIfManager.data) {
         fetchAccounts();
       }
-  }, [address, isManager]);
+  }, [checkIfManager.data, address]);
 
-  if (isManager) {
+  if (checkIfManager.data == true) {
     return (
       <div style={{ marginTop: '20px' }}>
         <Card>
@@ -158,7 +168,7 @@ const Lifewill = () => {
 
   return (
     <>
-      {(isRegistred.data === false || isConnected == false) ? (
+      {(isRegistred.data == undefined || isRegistred.data === false || isConnected == false) ? (
         <NotConnected createAccount={createAccount} isConnected ={isConnected}/>
       ) : (
         <LifeWillAccount />
