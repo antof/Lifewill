@@ -19,7 +19,7 @@ import LifeWillAccount from "./LifeWillAccount";
 import { Button } from "./ui/button";
 import NotConnected from "./NotConnected";
 
-const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_INFURA_URL);
+const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_ALCHEMY_URL);
 
 let isFetchingAccount = false;
 

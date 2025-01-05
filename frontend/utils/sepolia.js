@@ -1,11 +1,10 @@
-const RPC = "https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106";
 export const sepolia = {
     id: 11155111,
     name: 'Sepolia',
     nativeCurrency: { name: 'Sepolia Ether', symbol: 'SEP', decimals: 18 },
     rpcUrls: {
       default: {
-        http: [RPC],
+        http: [process.env.NEXT_PUBLIC_ALCHEMY_URL],
       },
     },
     blockExplorers: {

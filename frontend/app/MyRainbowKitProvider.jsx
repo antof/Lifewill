@@ -13,9 +13,6 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 
-// Remplacez par l'URL RPC de Sepolia (exemple avec Infura)
-const SEPOLIA_RPC_URL = 'https://sepolia.infura.io/v3/86f028d2d3ef4078bbbfc83e062f6106';
-
 const config = getDefaultConfig({
   appName: 'My RainbowKit App',
   projectId: '66836973d0e7ca63cb5f21c0f0fc984b', 

@@ -3,9 +3,9 @@ async function main() {
   const createAccount = await CreateAccountFact.deploy();
   console.log("Deploying contract...");
   await createAccount.waitForDeployment();
+  contractAddress = await createAccount.getAddress();
 
-
-  console.log("Contract deployed to:", createAccount.address);
+  console.log("Contract deployed to:", contractAddress);
 }
 
 main()
