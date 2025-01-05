@@ -6,7 +6,7 @@ import {
   RainbowKitProvider,
   darkTheme
 } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
+import { WagmiProvider, http} from 'wagmi';
 import { sepolia } from 'wagmi/chains';  // Garder seulement sepolia ici
 import {
   QueryClientProvider,
@@ -22,6 +22,9 @@ const config = getDefaultConfig({
   chains: [
     sepolia, 
   ],
+  transports: {
+    [sepolia.id]: http(process.env.NEXT_PUBLIC_ALCHEMY_URL),
+  },
   ssr: true, 
 });
 
